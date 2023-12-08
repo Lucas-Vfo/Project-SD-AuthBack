@@ -16,8 +16,7 @@ const db = new sqlite3.Database('./SDAuth.sqlite', (err) => {
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     name text,
     lastname text,
-    email,
-    username text, 
+    username text,
     password text
     )`,
     (err) => {

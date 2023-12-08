@@ -8,16 +8,16 @@ const router = express.Router();
 router.post('/register', async (req, res) => {
   try {
     // Obtener username y password del cuerpo de la solicitud
-    const { name, lastname, email, username, password } = req.body;
+    const { name, lastname, username, password } = req.body;
 
     // Hashear la contraseña antes de guardarla en la base de datos
     const hashedPassword = await bcrypt.hash(password, 10);
 
     // Preparar la consulta SQL para insertar el nuevo usuario
-    const sql = 'INSERT INTO users (name, lastname, email, username, password) VALUES (?,?,?,?,?)';
+    const sql = 'INSERT INTO users (name, lastname, username, password) VALUES (?,?,?,?,?)';
 
     // Ejecutar la consulta SQL
-    db.run(sql, [name, lastname, email, username, hashedPassword], function (err) {
+    db.run(sql, [name, lastname, username, hashedPassword], function (err) {
       if (err) {
         // Manejo de errores al intentar insertar en la base de datos
         console.error(err);
