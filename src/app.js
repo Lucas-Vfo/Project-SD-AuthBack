@@ -2,6 +2,7 @@ const express = require('express');
 const userRoutes = require('./routes');
 const app = express();
 const cors = require('cors');
+const db = require('./db'); // Cambiado el import
 
 const corsOptions = {
   origin: '*',
