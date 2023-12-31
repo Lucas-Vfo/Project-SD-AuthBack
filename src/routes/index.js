@@ -18,17 +18,17 @@ router.post('/auth/register', async (req, res) => {
 
     // Validar campos del registro
     if (!name || !lastname || !email || !username || !password || !confirmPassword) {
-      res.status(400).json({ messages: messages.error.needProps });
+      return res.status(400).json({ messages: messages.error.needProps });
     }
 
      // Validar el email
      if (!isValidEmail(email)) {
-      res.status(400).json({ message: messages.error.emailNoValido });
+      return res.status(400).json({ message: messages.error.emailNoValido });
     }
 
     // Validar que la contraseña sea igual en la confirmación
     if (password !== confirmPassword) {
-      res.status(400).json({ message: messages.error.passwordNotMatch });
+      return res.status(400).json({ message: messages.error.passwordNotMatch });
     }
 
     // Encontrar email de usuarios existentes
@@ -39,7 +39,7 @@ router.post('/auth/register', async (req, res) => {
     });
 
     if (userFind) {
-      res.status(400).json({ message: messages.error.emailExiste });
+      return res.status(400).json({ message: messages.error.emailExiste });
     }
 
     // Encontrar nombre de usuarios existentes
@@ -69,7 +69,7 @@ router.post('/auth/register', async (req, res) => {
     });
 
     if (!user) {
-      res.status(500).send('No podemos crear el usuario en este momento');
+      return res.status(500).send('No podemos crear el usuario en este momento');
     }
 
     const token = jwt.sign({ data: user }, 'secreto', {
@@ -93,6 +93,38 @@ router.post('/auth/register', async (req, res) => {
     // Manejo de errores generales
     console.error(err);
     res.status(500).json({ message: messages.error.default, error: err });
+  }
+});
+
+// Ruta para eliminar un usuario
+router.delete('/auth/delete/:id', async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id);
+
+    // Verificar si el usuario existe
+    const user = await prismaDB.user.findUnique({
+      where: {
+        id: userId,
+      },
+    });
+
+    if (!user) {
+      return res.status(404).json({ message: 'El usuario no existe' });
+    }
+
+    // Eliminar el usuario
+    await prismaDB.user.delete({
+      where: {
+        id: userId,
+      },
+    });
+
+    // Usuario eliminado correctamente
+    res.status(200).json({ message: 'Usuario eliminado correctamente' });
+  } catch (err) {
+    // Manejo de errores generales
+    console.error(err);
+    res.status(500).json({ message: 'Error al eliminar el usuario', error: err });
   }
 });
 
