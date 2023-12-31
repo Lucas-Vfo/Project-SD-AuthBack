@@ -1,49 +1,101 @@
 const express = require('express');
 const bcrypt = require('bcrypt');
-const sqlite3 = require('sqlite3').verbose();
+const jwt = require('jsonwebtoken');
 const db = require('../db');
+const prisma = require('@prisma/client');
+const { isValidEmail } = require('../utils/isValidEmail');
+const { messages } = require('../utils/messages.js');
 
+
+const prismaDB = new prisma.PrismaClient();
 const router = express.Router();
 
 // Ruta para registrar nuevos usuarios
-router.post('/register', async (req, res) => {
+router.post('/auth/register', async (req, res) => {
   try {
-    // Obtener username y password del cuerpo de la solicitud
-    const { name, lastname, username, password } = req.body;
+    // Obtener username, email y password del cuerpo de la solicitud
+    const { name, lastname, email, username, password, confirmPassword } = req.body;
 
-    // Crear una nueva conexión a la base de datos
-    const db = new sqlite3.Database('./SDAuth.sqlite', async (err) => {
-    if (err) {
-     console.error(err.message);
-     return;
+    // Validar campos del registro
+    if (!name || !lastname || !email || !username || !password || !confirmPassword) {
+      res.status(400).json({ messages: messages.error.needProps });
     }
+
+     // Validar el email
+     if (!isValidEmail(email)) {
+      res.status(400).json({ message: messages.error.emailNoValido });
+    }
+
+    // Validar que la contraseña sea igual en la confirmación
+    if (password !== confirmPassword) {
+      res.status(400).json({ message: messages.error.passwordNotMatch });
+    }
+
+    // Encontrar email de usuarios existentes
+    const userFind = await prismaDB.user.findFirst({ 
+      where: { 
+        email: email 
+      } 
+    });
+
+    if (userFind) {
+      res.status(400).json({ message: messages.error.emailExiste });
+    }
+
+    // Encontrar nombre de usuarios existentes
+    const existingUser = await prismaDB.user.findFirst({
+      where: {
+        username: username,
+      },
+    });
+    
+    if (existingUser) {
+      return res.status(400).json({ message: messages.error.userCreado });
+    }
+
+    // El nombre de usuario no está duplicado, continuar con la creación del usuario
 
     // Hashear la contraseña antes de guardarla en la base de datos
     const hashedPassword = await bcrypt.hash(password, 10);
 
-    // Preparar la consulta SQL para insertar el nuevo usuario
-    const sql = 'INSERT INTO users (name, lastname, username, password) VALUES (?,?,?,?)';
-
-    // Ejecutar la consulta SQL
-    db.run(sql, [name, lastname, username, hashedPassword], function (err) {
-      if (err) {
-        // Manejo de errores al intentar insertar en la base de datos
-        console.error(err.message);
-        res.status(500).json({ error: 'Error en la base de datos' });
-      } else {
-        // Usuario registrado con éxito, devolver el ID del nuevo usuario
-        res.status(201).json({ id: this.lastID });
-      }
+    const user = await prismaDB.user.create({
+      data: {
+        name: name,
+        lastname: lastname,
+        email: email,
+        username: username,
+        password: hashedPassword,
+      },
     });
-    // Cerrar la conexión a la base de datos
-    db.close();
-  });
+
+    if (!user) {
+      res.status(500).send('No podemos crear el usuario en este momento');
+    }
+
+    const token = jwt.sign({ data: user }, 'secreto', {
+      expiresIn: 86300,
+    });
+
+    res.cookie("auth_cookie", token, {
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 86400,
+      path: "/",
+    });
+
+    // Usuario creado correctamente
+    res.status(200).json({
+      newUser: user,
+      message: messages.success.userCreado,
+    });
 
   } catch (err) {
     // Manejo de errores generales
     console.error(err);
-    res.status(500).send('Server error');
+    res.status(500).json({ message: messages.error.default, error: err });
   }
 });
+
+
 
 module.exports = router;

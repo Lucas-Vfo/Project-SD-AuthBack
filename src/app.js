@@ -2,7 +2,8 @@ const express = require('express');
 const userRoutes = require('./routes');
 const app = express();
 const cors = require('cors');
-const db = require('./db'); // Cambiado el import
+const http = require('http');
+const server = http.createServer(app);
 
 const corsOptions = {
   origin: '*',
@@ -19,6 +20,6 @@ app.use('/api', userRoutes);
 
 // Definir el puerto y poner el servidor a escuchar
 const PORT = process.env.PORT || 3002;
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Servidor corriendo en el puerto ${PORT}`);
 });
